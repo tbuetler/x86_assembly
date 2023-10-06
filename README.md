@@ -25,4 +25,4 @@ the BTI3001 / BTI3002 Moodle site for details.
 
 * [3-ls](3-ls)
 * [4-sort](4-sort)
-* [5-shell](5-shell)
+* [5-address-book](5-address-book)
