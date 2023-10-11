@@ -21,12 +21,12 @@ _start:
 
     ;; Add *your code* here to make this program print "Hello world"!
 
-	mov rax, 1
-	mov rdi, 1
+	mov rax, 1			; Set RAX to 1 (syscall number for write)
+	mov rdi, 1			; Set RDI to 1 (file descriptor for STDOUT)
 
-	mov rsi, HelloMsg
-	mov rdx, HelloLen
-	syscall
+	mov rsi, HelloMsg	; Set RSI to the address of the HelloMsg string
+	mov rdx, HelloLen	; Set RDX to the length of the HelloMsg string
+	syscall				; Invoke the syscall to write the string to STDOUT
 
     mov rax, 60         ; Code for exit
     mov rdi, 0          ; Return a code of zero
