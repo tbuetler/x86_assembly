@@ -8,7 +8,7 @@
 
 SECTION .data           ; Section containing initialised data
 
-	HelloMsg: db "Hello world!", 10	;	Text that should be printed
+	HelloMsg: db "Hello world!", 10	;	Text that should be printed, 10 means new line
 	HelloLen: equ $-HelloMsg		;	Compute the length of the string
 
 SECTION .bss            ; Section containing uninitialized data
