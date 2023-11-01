@@ -1,169 +1,97 @@
-SECTION .data
-Base64Table: db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+; Author: Tim Bütler
+; 01.11.2023
+; With a bit help of ChatGPT to get the errors away :)
 
+SECTION .data           ; Section containing initialised data
+    Base64Table:        db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-SECTION .bss
+SECTION .bss            ; Section containing uninitialized data
+    ChunkSize:          equ     19        ; size in 3-byte work units (57 input bytes)
+    ReadBufferSize:     equ     ChunkSize * 3
+    OutputBufferSize:   equ     ChunkSize * 4
+    OutputBufer:        resb    OutputBufferSize + 16
+        ; +16 bytes is padding (mem-access and '='/EOL overwrite zone)
 
-byteStorage: resb 30000
-bytesToReadAtOnce: equ 30000
+    ReadBuffer:         equ     OutputBufer + ChunkSize + 4
+        ; read buffer is shared with output -> advanced just enough to let output
+        ; overwrite only source data which were already processed
 
+SECTION .text           ; Section containing code
 
-b64EncStor: resb 40000
-b64EncStorLen: equ $ - b64EncStor
-
-
-SECTION .text
-
-global _start
+global _start           ; Linker needs this to find the entry point!
 
 _start:
+    ; load some common values into preserved registers (these are "global")
+    xor     ebp,ebp             ; rbp = 0
+    mov     r12,ReadBuffer
+    mov     r13,OutputBufer
 
-;sys read   put everything from the file into the buffer "byteStorage"
-mov rax, 0
-mov rdi, 0
-mov rsi, byteStorage
-mov rdx, bytesToReadAtOnce
-syscall
+.processChunkLoop:
+    call    readInput
+    test    rax,rax
+    jle     .err_or_exit        ; error or zero length -> exit
+    call    processChunk        ; leaves size of output in rdi
+    call    writeOutput
+    jmp     .processChunkLoop   ; loop until full input was processed
 
+.err_or_exit:
+    mov     rdi,rax             ; error code = 0 when OK, otherwise err_no of sys_read()
+    mov     rax,60              ; sys_exit
+    syscall
 
-xor r11, r11 ; syscall strangely changes r11
-xor r12, r12    ;r12 will keep track of index in byteStorage array
-mov r13, 0  ;r13 will keep track of index in b64EncStor array
+readInput:      				; out rax = length or error (<0)
+    xor     eax,eax             ; rax = 0 = sys_read
+    xor     edi,edi             ; rdi = 0 = stdin
+    mov     rsi,r12             ; rsi = read buffer for data
+    mov     edx,ReadBufferSize  ; rdx = bytes to read (32b value)
+    syscall
+    ret
 
+writeOutput:    				; in rdi = length of output data to print
+    mov     rdx,rdi             ; output size
+    mov     rsi,r13             ; OutputBufer
+    lea     rax,[rbp+1]         ; rax = 1 (sys_write)
+    mov     rdi,rax             ; rdi = 1 (stdout)
+    syscall
+    ret
 
-.encodingInProgress:
+processChunk:
+								; rax = size of data to process (non zero value)
+    mov     rsi,r12             ; rsi = ReadBuffer
+    mov     rdi,r13             ; rdi = OutputBufer
+    lea     r8,[rsi+rax]        ; r8 = first byte after bytes read (address)
+    mov     [r8],ebp            ; make sure input data are padded with 4+ zeroes
+    ; convert input data into base64 encoding
 
-cmp rax, 0
-je .weHaveFinished      ;if no bits remaining, and no extra one or two
-                        ;bytes, we simply jump to the end
-dec rax
-inc r12
-
-
-mov r8b, [byteStorage + r12 -1]     ; put each input char in a register each
-
-mov r11b, r8b
-shr r11b, 2
-and r11b, 0x3F
-
-mov r11b, [Base64Table + r11]
-
-mov [b64EncStor + r13], r11b    ; our first char is now encoded
-inc r13
-
-cmp rax, 0      ;if rax = 0, rax was one before above decrementation, so we jump
-je .oneExtraByte    ;to .oneExtraByte
-
-;char two
-
-dec rax
-inc r12
-
-mov r9b, [byteStorage + r12-1]  ; put each input char in a register each
-
-and r8b, 0x3
-shl r8b,4
-mov r11b, r9b
-shr r11b, 4
-and r11b, 0xF
-add r8b, r11b
-
-mov r8b, [Base64Table + r8]
-
-mov [b64EncStor+r13], r8b   ; second char now encoded
-inc r13
-
-cmp rax, 0      ;rax was two before being decremented twice above, so we
-je .twoExtraBytes  ;jump to .twoExtraBytes
-
-;char three
-
-dec rax
-inc r12
-
-mov r10b, [byteStorage + r12-1] ;put each input char in a register each
-
-and r9b, 0xF
-shl r9b, 2
-mov r8b, r10b
-shr r8b, 6
-and r8b, 0x3
-add r9b, r8b
-
-mov r9b, [Base64Table +  r9]
-
-mov [b64EncStor+r13], r9b   ; third char now encoded
-inc r13
-
-;char four
-
-and r10b, 0x3F
-
-mov r10b, [Base64Table + r10]
-
-mov [b64EncStor+r13], r10b  ; fourth char now encoded
-inc r13
-
-jmp .encodingInProgress
-
-;--------
-
-.oneExtraByte:  ;so we need four (and not two !) bits more to reach 12
-
-shl r8b, 4
-and r8b, 0x3F   ;only keep six bits from left, the two most right are zero
-
-mov r8b, [Base64Table + r8]
-
-mov [b64EncStor + r13], r8b
-inc r13
-
-mov r8b, "="        ;add two extra equal signs
-
-mov [b64EncStor + r13], r8b
-inc r13
-mov [b64EncStor + r13], r8b
-inc r13
-
-jmp .weHaveFinished
-
-;------
-
-.twoExtraBytes: ;so we need two (and not four !) bits more to reach 18
-
-;inc r12
-
-mov r10b, [byteStorage + r12-1] ;put each input char in a register each
-
-shl r10b, 2
-and r10b, 0x3F  ;only keep six bits from left, the two most right are zero
-
-mov r10b, [Base64Table + r10]
-
-mov [b64EncStor + r13], r10b
-inc r13
-
-mov r8b, "="    ;add one extra equal sign
-
-mov [b64EncStor  + r13], r8b
-inc r13
-
-jmp .weHaveFinished
-
-;--------
-
-.weHaveFinished:
-
-;syscall for write, to output the result
-mov rax, 1
-mov rdi, 1
-mov rsi, b64EncStor
-mov rdx, r13
-syscall
-
-
-xor r12,r12
-
-mov rax, 60         ; System call for exit
-mov rdi, 0
-syscall
+.loop:
+    mov     eax,[rsi]
+    add     rsi,3
+    bswap   eax
+    shr     eax,8               ; 24 bits (4x6) of input in big-endian order
+        						; => b23..b18 is first 6-bits value to output, b5..b0 is last one
+    mov     edx,eax             ; copy eax into edx
+    shr     eax,6               ; remove 6 from eax because they will already be processed
+    and     edx,0x3F            ; keep only last 6 bits
+    mov     bh,[Base64Table+rdx]; translate into base64 (fourth output char)
+    mov     edx,eax             ; get copy of next 6 bits
+    shr     eax,6               ; remove 6 processed bits
+    and     edx,0x3F            ; keep only last 6 bits
+    mov     bl,[Base64Table+rdx]; translate into base64 (third output char)
+    shl     ebx,16              ; shift fourth+third char into upper 16 bits of ebx
+    mov     edx,eax             ; get next 6 bits
+    shr     eax,6               ; remove 6 processed bits
+    and     edx,0x3F            ; keep only last 6 bits
+    mov     bh,[Base64Table+rdx]; convert bits into base64 (second output char)
+    mov     bl,[Base64Table+rax]; convert bits into base64 (first output char)
+    mov     [rdi],ebx           ; write four output bytes
+    add     rdi,4
+    cmp     rsi,r8
+    jb      .loop               ; loop until all input data were processed (rsi >= r8)
+   								; patch the output chunk to end with '=' or '==' if (0 != (size%3))
+    sub     r8,rsi              ; r8 = 0, -1 (one char extra in output) or -2 (two chars extra)
+    mov     word [rdi+r8],'=='  ; overwrite any extra chars in output with '='
+   								; add newline after output
+    mov     byte [rdi],10
+    inc     rdi
+    sub     rdi,r13             ; rdi = size of output data
+    ret
