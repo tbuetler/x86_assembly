@@ -2,10 +2,10 @@
 ; 01.11.2023
 ;
 ; - Used registers:
-; - rax 	Input data
-; - ecx     number of bytes read from input
-; - r11     current position in InBuf
-; - r12     current position in OutBuf
+; - rax   Input data
+; - ecx   number of bytes read from input
+; - r11   current position in InBuf
+; - r12   current position in OutBuf
 
 SECTION .data                   ; Section containing initialised data
     Digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -24,7 +24,7 @@ global _start                   ; Linker needs this to find the entry point!
 _start:
 
 read:
-    ;read 3 bytes from the input
+    ; read 3 bytes from the input
     mov rax, 0                  ; sys_read
     mov rdi, 0                  ; file descriptor
     mov rsi, InBuf              ; destination buffer
@@ -118,6 +118,10 @@ writeline:
     mov rdx, r12
     syscall
 
+    ; Go back to read the next bytes from input
+    jmp read
+
+exit:
     ; add new line
     mov byte [OutBuf], 10        ; new line
     mov rax, 1
@@ -126,10 +130,6 @@ writeline:
     mov rdx, 1
     syscall
 
-    ; Go back to read the next bytes from input
-    jmp read
-
-exit:
     ; properly terminate the program
     mov rax, 60                 ; sys_exit
     xor rdi, rdi                ; return 0 for success
