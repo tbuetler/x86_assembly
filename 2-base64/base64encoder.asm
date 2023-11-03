@@ -1,97 +1,136 @@
 ; Author: Tim Bütler
 ; 01.11.2023
-; With a bit help of ChatGPT to get the errors away :)
+;
+; - Used registers:
+; - rax 	Input data
+; - ecx     number of bytes read from input
+; - r11     current position in InBuf
+; - r12     current position in OutBuf
 
-SECTION .data           ; Section containing initialised data
-    Base64Table:        db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+SECTION .data                   ; Section containing initialised data
+    Digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-SECTION .bss            ; Section containing uninitialized data
-    ChunkSize:          equ     19        ; size in 3-byte work units (57 input bytes)
-    ReadBufferSize:     equ     ChunkSize * 3
-    OutputBufferSize:   equ     ChunkSize * 4
-    OutputBufer:        resb    OutputBufferSize + 16
-        ; +16 bytes is padding (mem-access and '='/EOL overwrite zone)
+SECTION .bss                    ; Section containing uninitialized data
+    InBufLen:   equ 3
+    InBuf:      resb InBufLen
 
-    ReadBuffer:         equ     OutputBufer + ChunkSize + 4
-        ; read buffer is shared with output -> advanced just enough to let output
-        ; overwrite only source data which were already processed
+    OutBufLen:  equ 5
+    OutBuf:     resb OutBufLen
 
-SECTION .text           ; Section containing code
+SECTION .text                   ; Section containing code
 
-global _start           ; Linker needs this to find the entry point!
+global _start                   ; Linker needs this to find the entry point!
 
 _start:
-    ; load some common values into preserved registers (these are "global")
-    xor     ebp,ebp             ; rbp = 0
-    mov     r12,ReadBuffer
-    mov     r13,OutputBufer
 
-.processChunkLoop:
-    call    readInput
-    test    rax,rax
-    jle     .err_or_exit        ; error or zero length -> exit
-    call    processChunk        ; leaves size of output in rdi
-    call    writeOutput
-    jmp     .processChunkLoop   ; loop until full input was processed
-
-.err_or_exit:
-    mov     rdi,rax             ; error code = 0 when OK, otherwise err_no of sys_read()
-    mov     rax,60              ; sys_exit
+read:
+    ;read 3 bytes from the input
+    mov rax, 0                  ; sys_read
+    mov rdi, 0                  ; file descriptor
+    mov rsi, InBuf              ; destination buffer
+    mov rdx, InBufLen           ; maximum # of bytes to read
     syscall
 
-readInput:      				; out rax = length or error (<0)
-    xor     eax,eax             ; rax = 0 = sys_read
-    xor     edi,edi             ; rdi = 0 = stdin
-    mov     rsi,r12             ; rsi = read buffer for data
-    mov     edx,ReadBufferSize  ; rdx = bytes to read (32b value)
+    ; check the number of bytes read
+    cmp rax, 0                  ; did we receive any bytes?
+    je exit                     ; if not, exit the program
+
+    ; Prepare registers for loop
+    mov ecx, eax                ; save number of bytes read to work with
+    xor r11, r11                ; set current position in InBuf to 0
+    xor r12, r12                ; set current position in OutBuf to 0
+
+process:
+    ; check if we have at least 1 byte to encode
+    cmp ecx, 0
+    jle writeline
+
+    ; get the 1st 6 bits
+    mov rbx, 0                  ; clear rbx
+    mov bl, byte [InBuf + r11]  ; load next byte from InBuf
+    shr ebx, 2                  ; shift right to get the 1st 6 bits
+    and ebx, 0x3F               ; mask the bits
+    mov al, byte [Digits + rbx] ; get the corresponding character
+    mov byte [OutBuf + r12], al ; store it in OutBuf
+    inc r12                     ; increment the Output position
+    dec ecx                     ; decrement the byte count
+    inc r11                     ; increment the input position
+
+    ; get the 2nd 6 bits
+    cmp ecx, 0
+    jle add_double_equal        ; add padding if necessary
+    mov rbx, 0                  ; clear rbx
+    mov bl, byte [InBuf + r11]  ; load next byte from InBuf
+    shl ebx, 4                  ; shift left to get the next 6 bits
+    shr ebx, 2                  ; shift right to get the 2nd 6 bits
+    and ebx, 0x3F               ; mask the bits
+    mov al, byte [Digits + rbx] ; get the corresponding character
+    mov byte [OutBuf + r12], al ; store it in OutBuf
+    inc r12                     ; increment the Output position
+    dec ecx                     ; decrement the byte count
+    inc r11                     ; increment the input position
+
+    ; get the 3rd 6 bits
+    cmp ecx, 0
+    jle add_equal               ; add single padding if necessary
+    mov rbx, 0                  ; clear rbx
+    mov bl, byte [InBuf + r11]  ; load next byte from InBuf
+    shl ebx, 2                  ; shift left to get the next 6 bits
+    shr ebx, 2                  ; shift right to get the 3rd 6 bits
+    and ebx, 0x3F               ; mask the bits
+    mov al, byte [Digits + rbx] ; get the corresponding character
+    mov byte [OutBuf + r12], al ; store it in OutBuf
+    inc r12                     ; increment the Output position
+    dec ecx                     ; decrement the byte count
+    inc r11                     ; increment the input position
+
+    ; get the 4th 6 bits
+    mov rbx, 0                  ; clear rbx
+    shl ebx, 6                  ; shift left to get the next 6 bits
+    and ebx, 0x3F               ; mask the bits
+    mov al, byte [Digits + rbx] ; get the corresponding character
+    mov byte [OutBuf + r12], al ; store it in OutBuf
+    inc r12                     ; increment the Output position
+    dec ecx                     ; decrement the byte count
+    inc r11                     ; increment the input position
+
+    jmp process                 ; process the next group of bytes
+
+add_equal:
+    ; add single padding
+    mov byte [OutBuf + r12], 0x3d ; add the equal sign
+    inc r12                      ; increment the Output position
+    jmp writeline
+
+add_double_equal:
+    ; add double padding
+    mov byte [OutBuf + r12], 0x3d ; add the equal sign
+    inc r12                      ; increment the Output position
+    mov byte [OutBuf + r12], 0x3d ; add the equal sign
+    inc r12                      ; increment the Output position
+    jmp writeline
+
+writeline:
+    ; write OutBuf to stdout
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, OutBuf
+    mov rdx, r12
     syscall
-    ret
 
-writeOutput:    				; in rdi = length of output data to print
-    mov     rdx,rdi             ; output size
-    mov     rsi,r13             ; OutputBufer
-    lea     rax,[rbp+1]         ; rax = 1 (sys_write)
-    mov     rdi,rax             ; rdi = 1 (stdout)
+    ; add new line
+    mov byte [OutBuf], 10        ; new line
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, OutBuf
+    mov rdx, 1
     syscall
-    ret
 
-processChunk:
-								; rax = size of data to process (non zero value)
-    mov     rsi,r12             ; rsi = ReadBuffer
-    mov     rdi,r13             ; rdi = OutputBufer
-    lea     r8,[rsi+rax]        ; r8 = first byte after bytes read (address)
-    mov     [r8],ebp            ; make sure input data are padded with 4+ zeroes
-    ; convert input data into base64 encoding
+    ; Go back to read the next bytes from input
+    jmp read
 
-.loop:
-    mov     eax,[rsi]
-    add     rsi,3
-    bswap   eax
-    shr     eax,8               ; 24 bits (4x6) of input in big-endian order
-        						; => b23..b18 is first 6-bits value to output, b5..b0 is last one
-    mov     edx,eax             ; copy eax into edx
-    shr     eax,6               ; remove 6 from eax because they will already be processed
-    and     edx,0x3F            ; keep only last 6 bits
-    mov     bh,[Base64Table+rdx]; translate into base64 (fourth output char)
-    mov     edx,eax             ; get copy of next 6 bits
-    shr     eax,6               ; remove 6 processed bits
-    and     edx,0x3F            ; keep only last 6 bits
-    mov     bl,[Base64Table+rdx]; translate into base64 (third output char)
-    shl     ebx,16              ; shift fourth+third char into upper 16 bits of ebx
-    mov     edx,eax             ; get next 6 bits
-    shr     eax,6               ; remove 6 processed bits
-    and     edx,0x3F            ; keep only last 6 bits
-    mov     bh,[Base64Table+rdx]; convert bits into base64 (second output char)
-    mov     bl,[Base64Table+rax]; convert bits into base64 (first output char)
-    mov     [rdi],ebx           ; write four output bytes
-    add     rdi,4
-    cmp     rsi,r8
-    jb      .loop               ; loop until all input data were processed (rsi >= r8)
-   								; patch the output chunk to end with '=' or '==' if (0 != (size%3))
-    sub     r8,rsi              ; r8 = 0, -1 (one char extra in output) or -2 (two chars extra)
-    mov     word [rdi+r8],'=='  ; overwrite any extra chars in output with '='
-   								; add newline after output
-    mov     byte [rdi],10
-    inc     rdi
-    sub     rdi,r13             ; rdi = size of output data
-    ret
+exit:
+    ; properly terminate the program
+    mov rax, 60                 ; sys_exit
+    xor rdi, rdi                ; return 0 for success
+    syscall
