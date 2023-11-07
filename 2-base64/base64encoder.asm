@@ -1,21 +1,21 @@
-; Author: Tim Bütler
+; Author: Tim Butler
 ; 01.11.2023
 ;
 ; - Used registers:
-; - rax   Input data
-; - ecx   number of bytes read from input
-; - r11   current position in InBuf
-; - r12   current position in OutBuf
+; - rbx 	Input data
+; - rax     number of bytes read from input
+; - r11     current position in InBuf
+; - r12     current position in OutBuf
 
 SECTION .data                   ; Section containing initialised data
-    Digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 SECTION .bss                    ; Section containing uninitialized data
-    InBufLen:   equ 3
-    InBuf:      resb InBufLen
+	InBufLen:	equ 12
+	InBuf: 		resb InBufLen
 
-    OutBufLen:  equ 5
-    OutBuf:     resb OutBufLen
+	OutBufLen:	equ 16
+	OutBuf:		resb OutBufLen
 
 SECTION .text                   ; Section containing code
 
@@ -24,113 +24,108 @@ global _start                   ; Linker needs this to find the entry point!
 _start:
 
 read:
-    ; read 3 bytes from the input
-    mov rax, 0                  ; sys_read
-    mov rdi, 0                  ; file descriptor
-    mov rsi, InBuf              ; destination buffer
-    mov rdx, InBufLen           ; maximum # of bytes to read
-    syscall
+	; read bytes from the input
+	xor rax, rax                  	; sys_read
+	xor rdi, rdi                  	; file descriptor
+	mov rsi, InBuf              	; destination buffer
+	mov rdx, InBufLen           	; maximum # of bytes to read
+	syscall
 
-    ; check the number of bytes read
-    cmp rax, 0                  ; did we receive any bytes?
-    je exit                     ; if not, exit the program
+	dec rax 						; omit newline
+	mov byte [InBuf + rax], 0x0		; terminate input string
 
-    ; Prepare registers for loop
-    mov ecx, eax                ; save number of bytes read to work with
-    xor r11, r11                ; set current position in InBuf to 0
-    xor r12, r12                ; set current position in OutBuf to 0
+	cmp rax, 0						; did we recieved any bytes
+	je exit							; if not jump to exit
+
+	; reset registers
+	xor rdi, rdi					; input bytes processed
+	xor r12, r12					; output bytes written
 
 process:
-    ; check if we have at least 1 byte to encode
-    cmp ecx, 0
-    jle writeline
+	; reset registers
+	xor rbx, rbx
+	xor rdx, rdx
 
-    ; get the 1st 6 bits
-    mov rbx, 0                  ; clear rbx
-    mov bl, byte [InBuf + r11]  ; load next byte from InBuf
-    shr ebx, 2                  ; shift right to get the 1st 6 bits
-    and ebx, 0x3F               ; mask the bits
-    mov al, byte [Digits + rbx] ; get the corresponding character
-    mov byte [OutBuf + r12], al ; store it in OutBuf
-    inc r12                     ; increment the Output position
-    dec ecx                     ; decrement the byte count
-    inc r11                     ; increment the input position
+	; load 3 bytes in the right order
+	mov dh, byte [InBuf + rdi]
+	shl rdx, 8
+	mov dh, byte [InBuf + rdi + 1]
+	mov dl, byte [InBuf + rdi + 2]
 
-    ; get the 2nd 6 bits
-    cmp ecx, 0
-    jle add_double_equal        ; add padding if necessary
-    mov rbx, 0                  ; clear rbx
-    mov bl, byte [InBuf + r11]  ; load next byte from InBuf
-    shl ebx, 4                  ; shift left to get the next 6 bits
-    shr ebx, 2                  ; shift right to get the 2nd 6 bits
-    and ebx, 0x3F               ; mask the bits
-    mov al, byte [Digits + rbx] ; get the corresponding character
-    mov byte [OutBuf + r12], al ; store it in OutBuf
-    inc r12                     ; increment the Output position
-    dec ecx                     ; decrement the byte count
-    inc r11                     ; increment the input position
+	; 1st 6er bit block
+	mov rbx, rdx
+	shr rbx, 18
+	and rbx, 0b111111
+	add rbx, digits
+	mov bl , byte [rbx]
+	mov byte [OutBuf + r12], bl
+	inc r12
 
-    ; get the 3rd 6 bits
-    cmp ecx, 0
-    jle add_equal               ; add single padding if necessary
-    mov rbx, 0                  ; clear rbx
-    mov bl, byte [InBuf + r11]  ; load next byte from InBuf
-    shl ebx, 2                  ; shift left to get the next 6 bits
-    shr ebx, 2                  ; shift right to get the 3rd 6 bits
-    and ebx, 0x3F               ; mask the bits
-    mov al, byte [Digits + rbx] ; get the corresponding character
-    mov byte [OutBuf + r12], al ; store it in OutBuf
-    inc r12                     ; increment the Output position
-    dec ecx                     ; decrement the byte count
-    inc r11                     ; increment the input position
+	; 2nd 6er bit block
+	mov rbx, rdx
+	shr rbx, 12
+	and rbx, 0b111111
+	add rbx, digits
+	mov bl , byte [rbx]
+	mov byte [OutBuf + r12], bl
+	inc r12
+	inc rdi
 
-    ; get the 4th 6 bits
-    mov rbx, 0                  ; clear rbx
-    shl ebx, 6                  ; shift left to get the next 6 bits
-    and ebx, 0x3F               ; mask the bits
-    mov al, byte [Digits + rbx] ; get the corresponding character
-    mov byte [OutBuf + r12], al ; store it in OutBuf
-    inc r12                     ; increment the Output position
-    dec ecx                     ; decrement the byte count
-    inc r11                     ; increment the input position
+	; 3rd 6er bit block
+	cmp rax, rdi
+	je add_double_equal
 
-    jmp process                 ; process the next group of bytes
+	mov rbx, rdx
+	shr rbx, 6
+	and rbx, 0b111111
+	add rbx, digits
+	mov bl , byte [rbx]
+	mov byte [OutBuf + r12], bl
+	inc r12
+	inc rdi
 
-add_equal:
-    ; add single padding
-    mov byte [OutBuf + r12], 0x3d ; add the equal sign
-    inc r12                      ; increment the Output position
-    jmp writeline
+	; 4th 6er bit block
+	cmp rax, rdi
+	je add_equal
 
-add_double_equal:
-    ; add double padding
-    mov byte [OutBuf + r12], 0x3d ; add the equal sign
-    inc r12                      ; increment the Output position
-    mov byte [OutBuf + r12], 0x3d ; add the equal sign
-    inc r12                      ; increment the Output position
-    jmp writeline
+	mov rbx, rdx
+	and rbx, 0b111111
+	add rbx, digits
+	mov bl , byte [rbx]
+	mov byte [OutBuf + r12], bl
+	inc r12
+	inc rdi
+
+	; is there more?
+	cmp rdi, rax
+	jne process
 
 writeline:
-    ; write OutBuf to stdout
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, OutBuf
-    mov rdx, r12
-    syscall
+	; terminate output string
+	inc r12
+	mov byte [OutBuf + r12], 0x0
 
-    ; Go back to read the next bytes from input
-    jmp read
+	; write OutBuf to stdout
+	mov rax, 1
+	mov rdi, 1
+	mov rsi, OutBuf
+	mov rdx, r12
+	syscall
 
 exit:
-    ; add new line
-    mov byte [OutBuf], 10        ; new line
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, OutBuf
-    mov rdx, 1
-    syscall
+	; properly terminate the program
+	mov rax, 60                 ; sys_exit
+	xor rdi, rdi                ; return 0 for success
+	syscall
 
-    ; properly terminate the program
-    mov rax, 60                 ; sys_exit
-    xor rdi, rdi                ; return 0 for success
-    syscall
+; add some '=' or '==' to fill up
+add_double_equal:
+	mov rcx, 0x3d
+	mov [OutBuf + r12], rcx
+	inc r12
+
+add_equal:
+	mov rcx, 0x3d
+	mov [OutBuf + r12], rcx					; write one '=' to OutBuf
+	inc r12
+	jmp writeline
