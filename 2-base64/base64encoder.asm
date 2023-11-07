@@ -11,10 +11,10 @@ SECTION .data                   ; Section containing initialised data
 	digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 SECTION .bss                    ; Section containing uninitialized data
-	InBufLen:	equ 26
+	InBufLen:	equ 255
 	InBuf: 		resb InBufLen
 
-	OutBufLen:	equ 32
+	OutBufLen:	equ 255
 	OutBuf:		resb OutBufLen
 
 SECTION .text                   ; Section containing code
