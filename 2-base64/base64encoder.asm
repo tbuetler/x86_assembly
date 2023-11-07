@@ -101,6 +101,9 @@ process:
 	jne process
 
 writeline:
+	; add newline
+	inc r12
+	mov byte [OutBuf + r12], 0xa
 	; terminate output string
 	inc r12
 	mov byte [OutBuf + r12], 0x0
@@ -127,7 +130,5 @@ add_double_equal:
 add_equal:
 	mov rcx, 0x3d
 	mov [OutBuf + r12], rcx					; write one '=' to OutBuf
-	inc r12
-	mov byte [OutBuf + r12], 0xa
 	inc r12
 	jmp writeline
