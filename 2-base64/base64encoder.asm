@@ -11,10 +11,10 @@ SECTION .data                   ; Section containing initialised data
 	digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 SECTION .bss                    ; Section containing uninitialized data
-	InBufLen:	equ 255
+	InBufLen:	equ 12
 	InBuf: 		resb InBufLen
 
-	OutBufLen:	equ 255
+	OutBufLen:	equ 17
 	OutBuf:		resb OutBufLen
 
 SECTION .text                   ; Section containing code
@@ -127,5 +127,7 @@ add_double_equal:
 add_equal:
 	mov rcx, 0x3d
 	mov [OutBuf + r12], rcx					; write one '=' to OutBuf
+	inc r12
+	mov byte [OutBuf + r12], 0xa
 	inc r12
 	jmp writeline
