@@ -121,7 +121,7 @@ exit:
 ; add some '=' or '==' to fill up
 add_double_equal:
 	mov rcx, 0x3d
-	mov [OutBuf + r12], rcx
+	mov [OutBuf + r12], rcx					; write one '=' to OutBuf
 	inc r12
 
 add_equal:
