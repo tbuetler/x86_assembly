@@ -42,6 +42,11 @@ read:
 	xor r12, r12					; output bytes written
 
 process:
+	; we want to devide and conquer
+	; Input 	00000000 00000000 00000000		3 times 8 bits
+	; Output 	000000 000000 000000 000000		4 times 6 bits
+	; dont forget the big endian
+
 	; reset registers
 	xor rbx, rbx
 	xor rdx, rdx
@@ -104,6 +109,7 @@ writeline:
 	; add newline
 	inc r12
 	mov byte [OutBuf + r12], 0xa
+
 	; terminate output string
 	inc r12
 	mov byte [OutBuf + r12], 0x0
@@ -121,7 +127,7 @@ exit:
 	xor rdi, rdi                ; return 0 for success
 	syscall
 
-; add some '=' or '==' to fill up
+	; add some '=' or '==' to fill up
 add_double_equal:
 	mov rcx, 0x3d
 	mov [OutBuf + r12], rcx					; write one '=' to OutBuf
