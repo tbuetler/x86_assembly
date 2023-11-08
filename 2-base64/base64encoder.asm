@@ -11,10 +11,10 @@ SECTION .data                   ; Section containing initialised data
 	digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 SECTION .bss                    ; Section containing uninitialized data
-	InBufLen:	equ 120
+	InBufLen:	equ 3
 	InBuf: 		resb InBufLen
 
-	OutBufLen:	equ 170
+	OutBufLen:	equ 4
 	OutBuf:		resb OutBufLen
 
 SECTION .text                   ; Section containing code
@@ -31,8 +31,8 @@ read:
 	mov rdx, InBufLen           	; maximum # of bytes to read
 	syscall
 
-	dec rax 						; omit newline
-	mov byte [InBuf + rax], 0x0		; terminate input string
+	; dec rax 						; omit newline								; nur im C muss null terminiert sein
+	; mov byte [InBuf + rax], 0x0		; terminate input string 				; nur im C muss null terminiert sein
 
 	cmp rax, 0						; did we recieved any bytes
 	je exit							; if not jump to exit
@@ -103,16 +103,16 @@ process:
 
 	; is there more?
 	cmp rdi, rax
-	jne process
+	jne read
 
 writeline:
 	; add newline
-	inc r12
-	mov byte [OutBuf + r12], 0xa
+	; inc r12															; nur im C muss null terminiert sein
+	; mov byte [OutBuf + r12], 0xa										; nur im C muss null terminiert sein
 
 	; terminate output string
-	inc r12
-	mov byte [OutBuf + r12], 0x0
+	; inc r12															; nur im C muss null terminiert sein
+	; mov byte [OutBuf + r12], 0x0										; nur im C muss null terminiert sein
 
 	; write OutBuf to stdout
 	mov rax, 1
