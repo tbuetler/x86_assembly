@@ -1,4 +1,4 @@
-; Author: Tim Butler
+; Author: Tim Buetler
 ; 01.11.2023
 ;
 ; - Used registers:
@@ -25,14 +25,14 @@ _start:
 
 read:
 	; read bytes from the input
-	xor rax, rax                  	; sys_read
-	xor rdi, rdi                  	; file descriptor
+	mov rax, 0                  	; sys_read
+	mov rdi, 0                  	; file descriptor
 	mov rsi, InBuf              	; destination buffer
 	mov rdx, InBufLen           	; maximum # of bytes to read
 	syscall
 
 	; dec rax 						; omit newline								; nur im C muss null terminiert sein
-	; mov byte [InBuf + rax], 0x0		; terminate input string 				; nur im C muss null terminiert sein
+	; mov byte [InBuf + rax], 0x0	; terminate input string 					; nur im C muss null terminiert sein
 
 	cmp rax, 0						; did we recieved any bytes
 	je exit							; if not jump to exit
