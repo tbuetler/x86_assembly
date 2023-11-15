@@ -31,9 +31,6 @@ read:
 	mov rdx, InBufLen           	; maximum # of bytes to read
 	syscall
 
-	; dec rax 						; omit newline								; nur im C muss null terminiert sein
-	; mov byte [InBuf + rax], 0x0	; terminate input string 					; nur im C muss null terminiert sein
-
 	cmp rax, 0						; did we recieved any bytes
 	je exit							; if not jump to exit
 
@@ -106,14 +103,6 @@ process:
 	jne read
 
 writeline:
-	; add newline
-	; inc r12															; nur im C muss null terminiert sein
-	; mov byte [OutBuf + r12], 0xa										; nur im C muss null terminiert sein
-
-	; terminate output string
-	; inc r12															; nur im C muss null terminiert sein
-	; mov byte [OutBuf + r12], 0x0										; nur im C muss null terminiert sein
-
 	; write OutBuf to stdout
 	mov rax, 1
 	mov rdi, 1
@@ -124,7 +113,7 @@ writeline:
 exit:
 	; properly terminate the program
 	mov rax, 60                 ; sys_exit
-	xor rdi, rdi                ; return 0 for success
+	mov rdi, 0                ; return 0 for success
 	syscall
 
 	; add some '=' or '==' to fill up
