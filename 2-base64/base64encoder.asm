@@ -7,43 +7,43 @@
 ; - r11     current position in InBuf
 ; - r12     current position in OutBuf
 
-SECTION .data                   ; Section containing initialised data
+section .data
 	digits:     db "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-SECTION .bss                    ; Section containing uninitialized data
-	InBufLen:	equ 3
-	InBuf: 		resb InBufLen
+section .bss
+	InBufLen:   equ 3
+	InBuf:      resb InBufLen
 
-	OutBufLen:	equ 4
-	OutBuf:		resb OutBufLen
+	OutBufLen:  equ 4
+	OutBuf:     resb OutBufLen
 
-SECTION .text                   ; Section containing code
-
-global _start                   ; Linker needs this to find the entry point!
+section .text
+	global _start
 
 _start:
 
 read:
+	; clear previous input
+	mov byte[InBuf + 0], 0x00
+	mov byte[InBuf + 1], 0x00
+	mov byte[InBuf + 2], 0x00
+	mov byte[InBuf + 3], 0x00
+
 	; read bytes from the input
-	mov rax, 0                  	; sys_read
-	mov rdi, 0                  	; file descriptor
-	mov rsi, InBuf              	; destination buffer
-	mov rdx, InBufLen           	; maximum # of bytes to read
+	xor rax, rax                  	; sys_read
+	xor rdi, rdi                  	; stdin
+	mov rsi, InBuf
+	mov rdx, InBufLen
 	syscall
 
-	cmp rax, 0						; did we recieved any bytes
-	je exit							; if not jump to exit
+	cmp rax, 0						; did we receive any input
+	je exit
 
 	; reset registers
 	xor rdi, rdi					; input bytes processed
 	xor r12, r12					; output bytes written
 
-process:
-	; we want to devide and conquer
-	; Input 	00000000 00000000 00000000		3 times 8 bits
-	; Output 	000000 000000 000000 000000		4 times 6 bits
-	; dont forget the big endian
-
+encode:
 	; reset registers
 	xor rbx, rbx
 	xor rdx, rdx
@@ -54,7 +54,7 @@ process:
 	mov dh, byte [InBuf + rdi + 1]
 	mov dl, byte [InBuf + rdi + 2]
 
-	; 1st 6er bit block
+	; 1st 6-bit block
 	mov rbx, rdx
 	shr rbx, 18
 	and rbx, 0b111111
@@ -63,7 +63,7 @@ process:
 	mov byte [OutBuf + r12], bl
 	inc r12
 
-	; 2nd 6er bit block
+	; 2nd 6-bit block
 	mov rbx, rdx
 	shr rbx, 12
 	and rbx, 0b111111
@@ -73,10 +73,11 @@ process:
 	inc r12
 	inc rdi
 
-	; 3rd 6er bit block
-	cmp rax, rdi
+	; did we process all chars
+	cmp rdi, rax
 	je add_double_equal
 
+	; 3rd 6-bit block
 	mov rbx, rdx
 	shr rbx, 6
 	and rbx, 0b111111
@@ -86,10 +87,11 @@ process:
 	inc r12
 	inc rdi
 
-	; 4th 6er bit block
-	cmp rax, rdi
+	; did we process all chars
+	cmp rdi, rax
 	je add_equal
 
+	; 4th 6-bit block
 	mov rbx, rdx
 	and rbx, 0b111111
 	add rbx, digits
@@ -98,32 +100,27 @@ process:
 	inc r12
 	inc rdi
 
-	; is there more?
-	cmp rdi, rax
-	jne read
-
-writeline:
+write_buffer:
 	; write OutBuf to stdout
-	mov rax, 1
-	mov rdi, 1
+	mov rax, 1					; sys_write
+	mov rdi, 1					; stdout
 	mov rsi, OutBuf
-	mov rdx, r12
+	mov rdx, OutBufLen
 	syscall
+
+	jmp read
 
 exit:
 	; properly terminate the program
 	mov rax, 60                 ; sys_exit
-	mov rdi, 0                ; return 0 for success
+	xor rdi, rdi                ; success
 	syscall
 
-	; add some '=' or '==' to fill up
 add_double_equal:
-	mov rcx, 0x3d
-	mov [OutBuf + r12], rcx					; write one '=' to OutBuf
+	mov byte [OutBuf + r12], 0x3d
 	inc r12
 
 add_equal:
-	mov rcx, 0x3d
-	mov [OutBuf + r12], rcx					; write one '=' to OutBuf
+	mov byte [OutBuf + r12], 0x3d
 	inc r12
-	jmp writeline
+	jmp write_buffer
