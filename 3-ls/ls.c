@@ -88,10 +88,30 @@ void sorting(const char *path) {
         }
         closedir(dir);
 
+        // Sort the entries case-insensitively and alphabetically
+        for (int i = 0; i < length - 1; i++) {
+            for (int j = i + 1; j < length; j++) {
+                if (strcasecmp(fileNames[j], fileNames[i]) < 0 || (strcasecmp(fileNames[j], fileNames[i]) == 0 && strcmp(fileTypes[j], fileTypes[i]) < 0)) {
+                    // Swap fileNames
+                    char temp[256];
+                    strcpy(temp, fileNames[i]);
+                    strcpy(fileNames[i], fileNames[j]);
+                    strcpy(fileNames[j], temp);
+
+                    // Swap fileTypes
+                    strcpy(temp, fileTypes[i]);
+                    strcpy(fileTypes[i], fileTypes[j]);
+                    strcpy(fileTypes[j], temp);
+                }
+            }
+        }
+
+        // Print the sorted entries
         for (int i = 0; i < length; i++) {
             printf("%s%s\n", fileNames[i], fileTypes[i]);
         }
 
+        // Free dynamically allocated memory
         for (int i = 0; i < length; i++) {
             free(fileNames[i]);
             free(fileTypes[i]);
