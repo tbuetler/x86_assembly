@@ -1,86 +1,128 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <string.h>
 
-#define MAX_ENTRIES 1000
+void sorting(const char *path);
+void listPreviousFolder();
+void listFile(const char *filename);
 
-typedef struct {
-    char name[PATH_MAX];
-    char symbol;
-} Entry;
-
-int compareEntries(const void *a, const void *b) {
-    return strcmp(((Entry *)a)->name, ((Entry *)b)->name);
-}
-
-void listDirectory(const char *path) {
-    DIR *dir;
-    struct dirent *entry;
-    struct stat info;
-
-    Entry entries[MAX_ENTRIES];
-    int entryCount = 0;
-
-    dir = opendir(path);
-
-    if (!dir) {
-        perror("opendir");
-        exit(EXIT_FAILURE);
+int main(int argc, char **argv) {
+    if (argc <= 1) {
+        sorting("."); // Default to current directory if no argument is provided
+        return 0;
     }
 
-    while ((entry = readdir(dir)) != NULL && entryCount < MAX_ENTRIES) {
-        char fullpath[PATH_MAX];
-        snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
-
-        if (lstat(fullpath, &info) == -1) {
-            perror("lstat");
-            exit(EXIT_FAILURE);
-        }
-
-        strncpy(entries[entryCount].name, entry->d_name, sizeof(entries[entryCount].name) - 1);
-        entries[entryCount].name[sizeof(entries[entryCount].name) - 1] = '\0';
-
-        if (S_ISDIR(info.st_mode)) {
-            entries[entryCount].symbol = '/';
-        } else if (S_ISREG(info.st_mode)) {
-            entries[entryCount].symbol = (info.st_mode & S_IXUSR) ? '*' : '\0';
-        } else if (S_ISLNK(info.st_mode)) {
-            entries[entryCount].symbol = '@';
-        } else {
-            entries[entryCount].symbol = '\0';
-        }
-
-        entryCount++;
-    }
-
-    closedir(dir);
-
-    qsort(entries, entryCount, sizeof(Entry), compareEntries);
-
-    for (int i = 0; i < entryCount; i++) {
-        printf("%s%c\n", entries[i].name, entries[i].symbol);
-    }
-}
-
-int main(int argc, char *argv[]) {
-    const char *path;
-
-    if (argc == 1) {
-        // No parameter provided, list contents of current directory
-        path = ".";
+    if (argc == 2 && strcmp(argv[1], "..") == 0) {
+        printf("You typed in <..>\n");
+        listPreviousFolder();
+    } else if (argc == 2 && access(argv[1], F_OK) == 0) {
+        printf("You typed in a filename. Listing the file:\n");
+        listFile(argv[1]);
     } else if (argc == 2) {
-        // Parameter provided, list contents of specified directory or file
-        path = argv[1];
+        printf("You typed in a directory path. Listing the contents:\n");
+        sorting(argv[1]); // Call sorting with the specified directory path
     } else {
-        fprintf(stderr, "Usage: %s [directory or file]\n", argv[0]);
-        exit(EXIT_FAILURE);
+        printf("Usage: %s <You may use a parameter like .. or provide a filename or a directory path>\n", argv[0]);
+        return 1;
     }
 
-    listDirectory(path);
+    return 0;
+}
 
-    return EXIT_SUCCESS;
+void sorting(const char *path) {
+    DIR *dir;
+    struct dirent *ent;
+
+    char **fileNames;
+    char **fileTypes;
+    int length = 0;
+
+    if ((dir = opendir(path)) != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+                continue;
+            }
+            length++;
+        }
+        closedir(dir);
+
+        fileNames = (char **)malloc(length * sizeof(char *));
+        fileTypes = (char **)malloc(length * sizeof(char *));
+        for (int i = 0; i < length; i++) {
+            fileNames[i] = (char *)malloc(256 * sizeof(char));
+            fileTypes[i] = (char *)malloc(2 * sizeof(char));
+        }
+
+        dir = opendir(path);
+        int i = 0;
+        while ((ent = readdir(dir)) != NULL) {
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+                continue;
+            }
+
+            strcpy(fileNames[i], ent->d_name);
+
+            struct stat st;
+            char fullpath[512]; // Assuming maximum path length of 512 characters
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", path, ent->d_name);
+
+            if (lstat(fullpath, &st) == 0) {
+                if (S_ISDIR(st.st_mode)) {
+                    strcpy(fileTypes[i], "/");
+                } else if (S_ISLNK(st.st_mode)) {
+                    strcpy(fileTypes[i], "@");
+                } else if (st.st_mode & S_IXUSR || st.st_mode & S_IXGRP || st.st_mode & S_IXOTH) {
+                    strcpy(fileTypes[i], "*");
+                } else {
+                    strcpy(fileTypes[i], "");
+                }
+            } else {
+                strcpy(fileTypes[i], "");
+            }
+
+            i++;
+        }
+        closedir(dir);
+
+        for (int i = 0; i < length; i++) {
+            printf("%s%s\n", fileNames[i], fileTypes[i]);
+        }
+
+        for (int i = 0; i < length; i++) {
+            free(fileNames[i]);
+            free(fileTypes[i]);
+        }
+        free(fileNames);
+        free(fileTypes);
+    } else {
+        perror("Error opening directory");
+    }
+}
+
+void listPreviousFolder() {
+    struct dirent **fileList;
+    int n;
+
+    n = scandir("..", &fileList, NULL, alphasort);
+    if (n < 0) {
+        perror("Error opening the previous folder");
+        return;
+    }
+
+    for (int i = 0; i < n; ++i) {
+        if (strcmp(fileList[i]->d_name, ".") != 0 && strcmp(fileList[i]->d_name, "..") != 0) {
+            printf("%s\n", fileList[i]->d_name);
+        }
+        free(fileList[i]);
+    }
+
+    free(fileList);
+}
+
+void listFile(const char *filename) {
+    printf("%s\n", filename);
 }
