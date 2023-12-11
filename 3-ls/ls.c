@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <string.h>
 
 int compareStrings(const void *a, const void *b);
@@ -89,7 +90,7 @@ void listDirectory(const char *path) {
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entries[i]);
 
         // Get file information
-        if (stat(fullpath, &info) != 0) {
+        if (lstat(fullpath, &info) != 0) {
             perror("Error getting file information");
             // Continue to the next entry
             continue;
