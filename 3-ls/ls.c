@@ -3,14 +3,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <limits.h>
-#include <errno.h>
 
-// Function to compare strings for sorting
-int compareStrings(const void *a, const void *b);
-
-// Function to list directory contents
-void listDirectory(const char *path);
+int compareStrings();
+void listDirectory();
 
 int main(int argc, char *argv[]) {
     const char *path;
@@ -24,7 +19,7 @@ int main(int argc, char *argv[]) {
         path = argv[1];
     } else {
         // Incorrect usage
-        fprintf(stderr, "Usage: %s [directory or file]\n", argv[0]);
+        printf("Usage: %s [directory or file]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -50,8 +45,7 @@ void listDirectory(const char *path) {
     // Open the directory
     dir = opendir(path);
     if (dir == NULL) {
-        // Print error message and exit on failure
-        perror("Error opening directory");
+        printf("Error opening directory\n");
         exit(EXIT_FAILURE);
     }
 
@@ -66,8 +60,7 @@ void listDirectory(const char *path) {
     // Allocate memory for entries
     entries = (char **)malloc(numEntries * sizeof(char *));
     if (entries == NULL) {
-        // Print error message and exit on failure
-        perror("Memory allocation error");
+        printf("Memory allocation error\n");
         exit(EXIT_FAILURE);
     }
 
@@ -80,11 +73,6 @@ void listDirectory(const char *path) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 &&
             entry->d_name[0] != '.') {
             entries[index] = strdup(entry->d_name);
-            if (entries[index] == NULL) {
-                // Print error message and exit on failure
-                perror("Memory allocation error");
-                exit(EXIT_FAILURE);
-            }
             index++;
         }
     }
@@ -102,28 +90,28 @@ void listDirectory(const char *path) {
 
         // Get file information
         if (stat(fullpath, &info) != 0) {
-            // Print error message and exit on failure
-            perror("Error getting file information");
+            printf("Error getting file information\n");
             exit(EXIT_FAILURE);
         }
 
-        // Print entry name
-        printf("%s", entries[i]);
+	// Print entry name
+	printf("%s", entries[i]);
 
-        // Append / for directories
-        if (S_ISDIR(info.st_mode)) {
-            printf("/");
-        }
-        // Append * for executable files
-        else if (info.st_mode & S_IXUSR) {
-            printf("*");
-        }
-        // Append @ for symbolic links
-        else if (S_ISLNK(info.st_mode)) {
-            printf("@");
-        }
+	// Append / for directories
+	if (S_ISDIR(info.st_mode)) {
+  	  printf("/");
+	}
+	// Append * for executable files
+	else if (info.st_mode & S_IXUSR) {
+    	printf("*");
+	}
+	// Append @ for symbolic links
+	else if (S_ISLNK(info.st_mode)) {
+    	printf("@");
+	}
 
-        printf("\n");
+	printf("\n");
+
 
         // Free dynamically allocated memory
         free(entries[i]);
