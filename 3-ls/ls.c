@@ -3,11 +3,15 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <limits.h>
+#include <errno.h>
 
-int compareStrings();
-void listDirectory();
+// Function to compare strings for sorting
+int compareStrings(const void *a, const void *b);
 
-// Main function
+// Function to list directory contents
+void listDirectory(const char *path);
+
 int main(int argc, char *argv[]) {
     const char *path;
 
@@ -20,7 +24,7 @@ int main(int argc, char *argv[]) {
         path = argv[1];
     } else {
         // Incorrect usage
-        printf("Usage: %s [directory or file]\n", argv[0]);
+        fprintf(stderr, "Usage: %s [directory or file]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -46,7 +50,8 @@ void listDirectory(const char *path) {
     // Open the directory
     dir = opendir(path);
     if (dir == NULL) {
-        printf("Error opening directory\n");
+        // Print error message and exit on failure
+        perror("Error opening directory");
         exit(EXIT_FAILURE);
     }
 
@@ -61,7 +66,8 @@ void listDirectory(const char *path) {
     // Allocate memory for entries
     entries = (char **)malloc(numEntries * sizeof(char *));
     if (entries == NULL) {
-        printf("Memory allocation error\n");
+        // Print error message and exit on failure
+        perror("Memory allocation error");
         exit(EXIT_FAILURE);
     }
 
@@ -74,6 +80,11 @@ void listDirectory(const char *path) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 &&
             entry->d_name[0] != '.') {
             entries[index] = strdup(entry->d_name);
+            if (entries[index] == NULL) {
+                // Print error message and exit on failure
+                perror("Memory allocation error");
+                exit(EXIT_FAILURE);
+            }
             index++;
         }
     }
@@ -91,7 +102,8 @@ void listDirectory(const char *path) {
 
         // Get file information
         if (stat(fullpath, &info) != 0) {
-            printf("Error getting file information\n");
+            // Print error message and exit on failure
+            perror("Error getting file information");
             exit(EXIT_FAILURE);
         }
 
