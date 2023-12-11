@@ -4,8 +4,8 @@
 #include <sys/stat.h>
 #include <string.h>
 
-int compareStrings();
-void listDirectory();
+int compareStrings(const void *a, const void *b);
+void listDirectory(const char *path);
 
 int main(int argc, char *argv[]) {
     const char *path;
@@ -45,7 +45,7 @@ void listDirectory(const char *path) {
     // Open the directory
     dir = opendir(path);
     if (dir == NULL) {
-        printf("Error opening directory\n");
+        perror("Error opening directory");
         exit(EXIT_FAILURE);
     }
 
@@ -60,7 +60,7 @@ void listDirectory(const char *path) {
     // Allocate memory for entries
     entries = (char **)malloc(numEntries * sizeof(char *));
     if (entries == NULL) {
-        printf("Memory allocation error\n");
+        perror("Memory allocation error");
         exit(EXIT_FAILURE);
     }
 
@@ -90,28 +90,28 @@ void listDirectory(const char *path) {
 
         // Get file information
         if (stat(fullpath, &info) != 0) {
-            printf("Error getting file information\n");
-            exit(EXIT_FAILURE);
+            perror("Error getting file information");
+            // Continue to the next entry
+            continue;
         }
 
-	// Print entry name
-	printf("%s", entries[i]);
+        // Print entry name
+        printf("%s", entries[i]);
 
-	// Append / for directories
-	if (S_ISDIR(info.st_mode)) {
-  	  printf("/");
-	}
-	// Append * for executable files
-	else if (info.st_mode & S_IXUSR) {
-    	printf("*");
-	}
-	// Append @ for symbolic links
-	else if (S_ISLNK(info.st_mode)) {
-    	printf("@");
-	}
+        // Append / for directories
+        if (S_ISDIR(info.st_mode)) {
+            printf("/");
+        }
+        // Append * for executable files
+        else if (info.st_mode & S_IXUSR) {
+            printf("*");
+        }
+        // Append @ for symbolic links
+        else if (S_ISLNK(info.st_mode)) {
+            printf("@");
+        }
 
-	printf("\n");
-
+        printf("\n");
 
         // Free dynamically allocated memory
         free(entries[i]);
