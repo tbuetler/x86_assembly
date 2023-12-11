@@ -4,6 +4,32 @@
 #include <sys/stat.h>
 #include <string.h>
 
+int compareStrings();
+void listDirectory();
+
+// Main function
+int main(int argc, char *argv[]) {
+    const char *path;
+
+    // Check if a parameter is provided
+    if (argc == 1) {
+        // No parameter, list the current directory
+        path = ".";
+    } else if (argc == 2) {
+        // Parameter given, list the specified directory or file
+        path = argv[1];
+    } else {
+        // Incorrect usage
+        printf("Usage: %s [directory or file]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // List directory contents
+    listDirectory(path);
+
+    return 0;
+}
+
 // Function to compare strings for sorting
 int compareStrings(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
@@ -72,13 +98,17 @@ void listDirectory(const char *path) {
         // Print entry name
         printf("%s", entries[i]);
 
-        // Append @ for directories
+        // Append / for directories
         if (S_ISDIR(info.st_mode)) {
-            printf("@");
+            printf("/");
         }
         // Append * for executable files
         else if (info.st_mode & S_IXUSR) {
             printf("*");
+        }
+        // Append @ for symbolic links
+        else if (S_ISLNK(info.st_mode)) {
+            printf("@");
         }
 
         printf("\n");
@@ -88,27 +118,4 @@ void listDirectory(const char *path) {
     }
 
     free(entries);
-}
-
-// Main function
-int main(int argc, char *argv[]) {
-    const char *path;
-
-    // Check if a parameter is provided
-    if (argc == 1) {
-        // No parameter, list the current directory
-        path = ".";
-    } else if (argc == 2) {
-        // Parameter given, list the specified directory or file
-        path = argv[1];
-    } else {
-        // Incorrect usage
-        printf("Usage: %s [directory or file]\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    // List directory contents
-    listDirectory(path);
-
-    return 0;
 }
