@@ -72,7 +72,7 @@ void listDirectory(const char *path) {
         // Print entry name
         printf("%s", entries[i]);
 
-        // Append / for directories
+        // Append @ for directories
         if (S_ISDIR(info.st_mode)) {
             printf("@");
         }
