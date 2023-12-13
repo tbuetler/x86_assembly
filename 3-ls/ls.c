@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 
 int compareStrings(const void *a, const void *b);
 void listDirectory(const char *path);
@@ -20,7 +21,7 @@ int main(int argc, char *argv[]) {
         path = argv[1];
     } else {
         // Incorrect usage
-        printf("Usage: %s [directory or file]\n", argv[0]);
+        fprintf(stderr, "Usage: %s [directory or file]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -62,6 +63,7 @@ void listDirectory(const char *path) {
     entries = (char **)malloc(numEntries * sizeof(char *));
     if (entries == NULL) {
         perror("Memory allocation error");
+        closedir(dir);
         exit(EXIT_FAILURE);
     }
 
@@ -87,7 +89,12 @@ void listDirectory(const char *path) {
     // Print the sorted entries
     for (int i = 0; i < numEntries; i++) {
         char fullpath[PATH_MAX];
-        snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entries[i]);
+
+        // Check for path length
+        if (snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entries[i]) >= PATH_MAX) {
+            fprintf(stderr, "Path length exceeds maximum limit\n");
+            continue;
+        }
 
         // Get file information
         if (lstat(fullpath, &info) != 0) {
