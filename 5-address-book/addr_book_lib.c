@@ -38,8 +38,7 @@ int addr_book_add_item(struct addr_book* ab, const char* name,
         }
     }
 
-    // Assume that addr_book_item has a constructor function to parse the date
-    // For simplicity, I'll use sscanf to parse the date in this example
+    // Parse the date in the "dd.mm.yyyy" format
     int day, month, year;
     sscanf(date, "%d.%d.%d", &day, &month, &year);
 
@@ -86,7 +85,7 @@ int addr_book_remove_element_at(struct addr_book* ab, size_t index) {
 // Function to print the address book to a stream
 void addr_book_print(FILE* stream, const struct addr_book* ab) {
     for (size_t i = 0; i < ab->size; i++) {
-        fprintf(stream, "Name: %s, First Name: %s, Birth Date: %d.%d.%d\n",
+        fprintf(stream, "Name: %s, First Name: %s, Birth Date: %02d.%02d.%04d\n",
                 ab->array[i].name, ab->array[i].first_name,
                 ab->array[i].birth_date.day, ab->array[i].birth_date.month,
                 ab->array[i].birth_date.year);
@@ -101,7 +100,7 @@ int addr_book_save(const char* filename, const struct addr_book* ab) {
     }
 
     for (size_t i = 0; i < ab->size; i++) {
-        fprintf(file, "%s;%s;%d.%d.%d\n", ab->array[i].name, ab->array[i].first_name,
+        fprintf(file, "%s;%s;%02d.%02d.%04d\n", ab->array[i].name, ab->array[i].first_name,
                 ab->array[i].birth_date.day, ab->array[i].birth_date.month,
                 ab->array[i].birth_date.year);
     }
@@ -129,17 +128,54 @@ int addr_book_remove_element_with_name(struct addr_book* ab, const char* name) {
 
     return removed ? 0 : 1; // Success if at least one element is removed
 }
-// addr_book_lib.c
 
-struct addr_book* addr_book_create_from_file(const char* filename){
-    // Your implementation here
-    return NULL;
+// Function to create an address book from a file
+struct addr_book* addr_book_create_from_file(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        return NULL; // File opening error
+    }
+
+    struct addr_book* ab = addr_book_create_empty();
+    if (ab == NULL) {
+        fclose(file);
+        return NULL; // Memory allocation error
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file) != NULL) {
+        char name[ADDR_BOOK_NAME_MAX_LEN];
+        char first_name[ADDR_BOOK_FIRST_NAME_MAX_LEN];
+        int day, month, year;
+
+        if (sscanf(line, "%[^;];%[^;];%d.%d.%d", name, first_name, &day, &month, &year) == 5) {
+            addr_book_add_item(ab, name, first_name, line);
+        } else {
+            // Handle line parsing error
+        }
+    }
+
+    fclose(file);
+    return ab;
 }
 
-struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab, const char* name){
-    // Your implementation here
-    return NULL;
+// Function to create an address book from entries with a specific name
+struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab, const char* name) {
+    struct addr_book* selected_ab = addr_book_create_empty();
+    if (selected_ab == NULL) {
+        return NULL; // Memory allocation error
+    }
+
+    for (size_t i = 0; i < ab->size; i++) {
+        if (strcmp(ab->array[i].name, name) == 0) {
+            addr_book_add_item(selected_ab, ab->array[i].name, ab->array[i].first_name, "01.01.1970");
+        }
+    }
+
+    return selected_ab;
 }
+
+
 
 
 /*
