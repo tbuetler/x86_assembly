@@ -14,7 +14,7 @@ struct addr_book* addr_book_create_empty(void) {
         ab->array = malloc(ab->max_size * sizeof(struct addr_book_item));
         if (ab->array == NULL) {
             free(ab);
-            return NULL; // Allocation failure
+            return 0; // Allocation failure
         }
     }
     return ab;
@@ -35,7 +35,7 @@ int addr_book_add_item(struct addr_book* ab, const char* name,
         ab->max_size *= 2;
         ab->array = realloc(ab->array, ab->max_size * sizeof(struct addr_book_item));
         if (ab->array == NULL) {
-            return 1; // Allocation failure
+            return 0; // Allocation failure
         }
     }
 
@@ -71,7 +71,7 @@ struct addr_book_item* addr_book_get_element_at(struct addr_book* ab, size_t ind
 // Function to remove the element at the specified index
 int addr_book_remove_element_at(struct addr_book* ab, size_t index) {
     if (index >= ab->size) {
-        return 1; // Index out of bounds
+        return 0; // Index out of bounds
     }
 
     // Shift elements to fill the gap
@@ -96,7 +96,7 @@ void addr_book_print(FILE* stream, const struct addr_book* ab) {
 int addr_book_save(const char* filename, const struct addr_book* ab) {
     FILE* file = fopen(filename, "w");
     if (file == NULL) {
-        return 1; // Failed to open the file
+        return 0; // Failed to open the file
     }
 
     for (size_t i = 0; i < ab->size; i++) {
