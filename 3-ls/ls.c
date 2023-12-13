@@ -110,13 +110,13 @@ void listDirectory(const char *path) {
         if (S_ISDIR(info.st_mode)) {
             printf("/");
         }
+		// Append @ for symbolic links
+		else if (S_ISLNK(info.st_mode)) {
+			printf("@");
+		}
         // Append * for executable files
         else if (info.st_mode & S_IXUSR) {
             printf("*");
-        }
-        // Append @ for symbolic links
-        else if (S_ISLNK(info.st_mode)) {
-            printf("@");
         }
 
         printf("\n");
