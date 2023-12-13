@@ -2,6 +2,150 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
+#include "addr_book_lib.h"
+
+// Function to create an empty address book
+struct addr_book* addr_book_create_empty(void) {
+    struct addr_book* ab = malloc(sizeof(struct addr_book));
+    if (ab != NULL) {
+        ab->max_size = ADDR_BOOK_INIT_SIZE;
+        ab->size = 0;
+        ab->array = malloc(ab->max_size * sizeof(struct addr_book_item));
+        if (ab->array == NULL) {
+            free(ab);
+            return NULL; // Allocation failure
+        }
+    }
+    return ab;
+}
+
+// Function to delete an existing address book
+void addr_book_delete(struct addr_book* ab) {
+    free(ab->array);
+    free(ab);
+}
+
+// Function to add an entry to the address book
+int addr_book_add_item(struct addr_book* ab, const char* name,
+                       const char* first_name, const char* date) {
+    if (ab->size == ab->max_size) {
+        // Double the size of the array if it's full
+        ab->max_size *= 2;
+        ab->array = realloc(ab->array, ab->max_size * sizeof(struct addr_book_item));
+        if (ab->array == NULL) {
+            return 1; // Allocation failure
+        }
+    }
+
+    // Assume that addr_book_item has a constructor function to parse the date
+    // For simplicity, I'll use sscanf to parse the date in this example
+    int day, month, year;
+    sscanf(date, "%d.%d.%d", &day, &month, &year);
+
+    // Add the entry to the address book
+    struct addr_book_item* entry = &ab->array[ab->size];
+    snprintf(entry->name, ADDR_BOOK_NAME_MAX_LEN, "%s", name);
+    snprintf(entry->first_name, ADDR_BOOK_FIRST_NAME_MAX_LEN, "%s", first_name);
+    entry->birth_date.day = (uint8_t)day;
+    entry->birth_date.month = (uint8_t)month;
+    entry->birth_date.year = (uint32_t)year;
+
+    ab->size++;
+    return 0; // Success
+}
+
+// Function to get the effective number of entries in the address book
+size_t addr_book_size(const struct addr_book* ab) {
+    return ab->size;
+}
+
+// Function to get a pointer to the element at the specified index
+struct addr_book_item* addr_book_get_element_at(struct addr_book* ab, size_t index) {
+    if (index < ab->size) {
+        return &ab->array[index];
+    }
+    return NULL;
+}
+
+// Function to remove the element at the specified index
+int addr_book_remove_element_at(struct addr_book* ab, size_t index) {
+    if (index >= ab->size) {
+        return 1; // Index out of bounds
+    }
+
+    // Shift elements to fill the gap
+    for (size_t i = index; i < ab->size - 1; i++) {
+        ab->array[i] = ab->array[i + 1];
+    }
+
+    ab->size--;
+    return 0; // Success
+}
+
+// Function to print the address book to a stream
+void addr_book_print(FILE* stream, const struct addr_book* ab) {
+    for (size_t i = 0; i < ab->size; i++) {
+        fprintf(stream, "Name: %s, First Name: %s, Birth Date: %d.%d.%d\n",
+                ab->array[i].name, ab->array[i].first_name,
+                ab->array[i].birth_date.day, ab->array[i].birth_date.month,
+                ab->array[i].birth_date.year);
+    }
+}
+
+// Function to save the address book to a CSV file
+int addr_book_save(const char* filename, const struct addr_book* ab) {
+    FILE* file = fopen(filename, "w");
+    if (file == NULL) {
+        return 1; // Failed to open the file
+    }
+
+    for (size_t i = 0; i < ab->size; i++) {
+        fprintf(file, "%s;%s;%d.%d.%d\n", ab->array[i].name, ab->array[i].first_name,
+                ab->array[i].birth_date.day, ab->array[i].birth_date.month,
+                ab->array[i].birth_date.year);
+    }
+
+    fclose(file);
+    return 0; // Success
+}
+
+// Function to remove all elements with a given name
+int addr_book_remove_element_with_name(struct addr_book* ab, const char* name) {
+    int removed = 0;
+
+    for (size_t i = 0; i < ab->size; i++) {
+        if (strcmp(ab->array[i].name, name) == 0) {
+            // Shift elements to fill the gap
+            for (size_t j = i; j < ab->size - 1; j++) {
+                ab->array[j] = ab->array[j + 1];
+            }
+
+            ab->size--;
+            removed = 1;
+            i--; // Revisit the same index since the elements are shifted
+        }
+    }
+
+    return removed ? 0 : 1; // Success if at least one element is removed
+}
+// addr_book_lib.c
+
+struct addr_book* addr_book_create_from_file(const char* filename){
+    // Your implementation here
+    return NULL;
+}
+
+struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab, const char* name){
+    // Your implementation here
+    return NULL;
+}
+
+
+/*
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <assert.h>
 #include "addr_book_lib.h"
@@ -9,25 +153,25 @@
 
 
 
-/** 
+
 Contains the implementation of the functions for manipulating an Address Book.
 Functions are presented in the header file.
 
- */
+
 
 
 struct addr_book * addr_book_create_empty(void){
 
   return NULL;
-  
+
 }
 
 int addr_book_add_item(struct addr_book* ab, const char* name,
                        const char* first_name, const char* date) {
 
-    
 
-    return 0;  
+
+    return 0;
 }
 size_t addr_book_size(const struct addr_book* ab){
   return ab->size;
@@ -36,7 +180,7 @@ size_t addr_book_size(const struct addr_book* ab){
 void addr_book_delete(struct addr_book* ab){
 
 
-  
+
   return;
 }
 
@@ -45,7 +189,7 @@ struct addr_book_item* addr_book_get_element_at(struct addr_book* ab,size_t inde
 
 
 
-  
+
   return NULL;
 }
 
@@ -56,10 +200,10 @@ int addr_book_remove_element_at(struct addr_book* ab,size_t index){
 
 
 
-  
+
   return 0;
 }
- 
+
 void addr_book_print(FILE * stream, const struct addr_book* ab){
 
 
@@ -70,8 +214,8 @@ void addr_book_print(FILE * stream, const struct addr_book* ab){
 int addr_book_save(const char* filename,const struct addr_book* ab){
 
 
-  
-        
+
+
   return 0;
 }
 int addr_book_remove_element_with_name(struct addr_book* ab,const char* name){
@@ -80,7 +224,7 @@ int addr_book_remove_element_with_name(struct addr_book* ab,const char* name){
 
 
 
-  
+
   return 0;
 
 }
@@ -98,9 +242,10 @@ struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_s
 
 
 
-  
+
 
     return NULL;
-  
+
 
 }
+*/
