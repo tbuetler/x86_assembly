@@ -160,23 +160,20 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
 }
 
 // Function to create an address book from entries with a specific name
-struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab, const char* name) {
+struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_source, const char* name) {
     struct addr_book* selected_ab = addr_book_create_empty();
     if (selected_ab == NULL) {
         return NULL; // Memory allocation error
     }
 
-    for (size_t i = 0; i < ab->size; i++) {
-        if (strcmp(ab->array[i].name, name) == 0) {
-            addr_book_add_item(selected_ab, ab->array[i].name, ab->array[i].first_name, "01.01.1970");
+    for (size_t i = 0; i < ab_source->size; i++) {
+        if (strcmp(ab_source->array[i].name, name) == 0) {
+            addr_book_add_item(selected_ab, ab_source->array[i].name, ab_source->array[i].first_name, "01.01.1970");
         }
     }
 
     return selected_ab;
 }
-
-
-
 
 /*
 #include <stdlib.h>
