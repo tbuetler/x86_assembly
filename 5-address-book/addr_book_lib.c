@@ -6,7 +6,6 @@
 #include "addr_book_lib.h"
 
 // Function to create an empty address book
-
 struct addr_book* addr_book_create_empty(void) {
     struct addr_book* ab = malloc(sizeof(struct addr_book));
     if (ab != NULL) {
@@ -79,7 +78,6 @@ int addr_book_remove_element_at(struct addr_book* ab, size_t index) {
     for (size_t i = index; i < ab->size - 1; i++) {
         ab->array[i] = ab->array[i + 1];
     }
-
     ab->size--;
     return 0; // Success
 }
@@ -106,7 +104,6 @@ int addr_book_save(const char* filename, const struct addr_book* ab) {
                 ab->array[i].birth_date.day, ab->array[i].birth_date.month,
                 ab->array[i].birth_date.year);
     }
-
     fclose(file);
     return 0; // Success
 }
@@ -121,13 +118,11 @@ int addr_book_remove_element_with_name(struct addr_book* ab, const char* name) {
             for (size_t j = i; j < ab->size - 1; j++) {
                 ab->array[j] = ab->array[j + 1];
             }
-
             ab->size--;
             removed = 1;
             i--; // Revisit the same index since the elements are shifted
         }
     }
-
     return removed ? 0 : 1; // Success if at least one element is removed
 }
 
@@ -156,7 +151,6 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
             // Handle line parsing error
         }
     }
-
     fclose(file);
     return ab;
 }
@@ -173,114 +167,5 @@ struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_s
             addr_book_add_item(selected_ab, ab_source->array[i].name, ab_source->array[i].first_name, "01.01.1970");
         }
     }
-
     return selected_ab;
 }
-
-/*
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#include <assert.h>
-#include "addr_book_lib.h"
-
-
-
-
-
-Contains the implementation of the functions for manipulating an Address Book.
-Functions are presented in the header file.
-
-
-
-
-struct addr_book * addr_book_create_empty(void){
-
-  return NULL;
-
-}
-
-int addr_book_add_item(struct addr_book* ab, const char* name,
-                       const char* first_name, const char* date) {
-
-
-
-    return 0;
-}
-size_t addr_book_size(const struct addr_book* ab){
-  return ab->size;
-}
-
-void addr_book_delete(struct addr_book* ab){
-
-
-
-  return;
-}
-
-struct addr_book_item* addr_book_get_element_at(struct addr_book* ab,size_t index){
-
-
-
-
-
-  return NULL;
-}
-
-
-int addr_book_remove_element_at(struct addr_book* ab,size_t index){
-
-
-
-
-
-
-  return 0;
-}
-
-void addr_book_print(FILE * stream, const struct addr_book* ab){
-
-
-  return;
-}
-
-
-int addr_book_save(const char* filename,const struct addr_book* ab){
-
-
-
-
-  return 0;
-}
-int addr_book_remove_element_with_name(struct addr_book* ab,const char* name){
-
-
-
-
-
-
-  return 0;
-
-}
-
-struct addr_book* addr_book_create_from_file(const char* filename){
-
-
-    return NULL;
-
-
-}
-
-
-struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_source,const char* name){
-
-
-
-
-
-    return NULL;
-
-
-}
-*/
