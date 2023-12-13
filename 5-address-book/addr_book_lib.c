@@ -14,7 +14,7 @@ struct addr_book* addr_book_create_empty(void) {
         ab->array = malloc(ab->max_size * sizeof(struct addr_book_item));
         if (ab->array == NULL) {
             free(ab);
-            return 0; // Allocation failure
+            return NULL; // Allocation failure
         }
     }
     return ab;
@@ -35,7 +35,7 @@ int addr_book_add_item(struct addr_book* ab, const char* name,
         ab->max_size *= 2;
         ab->array = realloc(ab->array, ab->max_size * sizeof(struct addr_book_item));
         if (ab->array == NULL) {
-            return 0; // Allocation failure
+            return 1; // Allocation failure
         }
     }
 
@@ -71,7 +71,7 @@ struct addr_book_item* addr_book_get_element_at(struct addr_book* ab, size_t ind
 // Function to remove the element at the specified index
 int addr_book_remove_element_at(struct addr_book* ab, size_t index) {
     if (index >= ab->size) {
-        return 0; // Index out of bounds
+        return 1; // Index out of bounds
     }
 
     // Shift elements to fill the gap
@@ -96,7 +96,7 @@ void addr_book_print(FILE* stream, const struct addr_book* ab) {
 int addr_book_save(const char* filename, const struct addr_book* ab) {
     FILE* file = fopen(filename, "w");
     if (file == NULL) {
-        return 0; // Failed to open the file
+        return 1; // Failed to open the file
     }
 
     for (size_t i = 0; i < ab->size; i++) {
@@ -146,14 +146,23 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
         int day, month, year;
 
         if (sscanf(line, "%[^;];%[^;];%d.%d.%d", name, first_name, &day, &month, &year) == 5) {
-            addr_book_add_item(ab, name, first_name, line);
+            // Add the entry to the address book
+            int result = addr_book_add_item(ab, name, first_name, line);
+            if (result != 0) {
+                // Handle error adding entry to the address book
+                fclose(file);
+                addr_book_delete(ab);
+                return NULL;
+            }
         } else {
             // Handle line parsing error
+            fprintf(stderr, "Error parsing line: %s", line);
         }
     }
     fclose(file);
     return ab;
 }
+
 
 // Function to create an address book from entries with a specific name
 struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_source, const char* name) {
