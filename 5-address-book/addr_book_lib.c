@@ -148,7 +148,7 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
 
         if (sscanf(line, "%[^;];%[^;];%d;%d;%d", name, first_name, &year, &month, &day) == 5) {
             // Add the entry to the address book
-            printf("Adding entry: %s %s %02d;%02d;%04d\n", name, first_name, day, month, year);
+            printf("Adding entry: %s %s %04d;%02d;%02d\n", name, first_name, year, month, day);
             int result = addr_book_add_item(ab, name, first_name, line);
             if (result != 0) {
                 perror("Error adding entry to address book");
@@ -183,7 +183,7 @@ struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_s
 
     for (size_t i = 0; i < ab_source->size; i++) {
         if (strcmp(ab_source->array[i].name, name) == 0) {
-            addr_book_add_item(selected_ab, ab_source->array[i].name, ab_source->array[i].first_name, "01;01;1970");
+            addr_book_add_item(selected_ab, ab_source->array[i].name, ab_source->array[i].first_name, "1970;01;01");
         }
     }
     return selected_ab;
