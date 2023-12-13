@@ -6,6 +6,7 @@
 #include "addr_book_lib.h"
 
 // Function to create an empty address book
+
 struct addr_book* addr_book_create_empty(void) {
     struct addr_book* ab = malloc(sizeof(struct addr_book));
     if (ab != NULL) {
@@ -19,6 +20,7 @@ struct addr_book* addr_book_create_empty(void) {
     }
     return ab;
 }
+
 
 // Function to delete an existing address book
 void addr_book_delete(struct addr_book* ab) {
