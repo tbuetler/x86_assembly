@@ -130,12 +130,14 @@ int addr_book_remove_element_with_name(struct addr_book* ab, const char* name) {
 struct addr_book* addr_book_create_from_file(const char* filename) {
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
+        perror("Error opening file");
         return NULL; // File opening error
     }
 
     struct addr_book* ab = addr_book_create_empty();
     if (ab == NULL) {
         fclose(file);
+        perror("Memory allocation error");
         return NULL; // Memory allocation error
     }
 
@@ -147,9 +149,10 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
 
         if (sscanf(line, "%[^;];%[^;];%d.%d.%d", name, first_name, &day, &month, &year) == 5) {
             // Add the entry to the address book
+            printf("Adding entry: %s %s %d.%d.%d\n", name, first_name, day, month, year);
             int result = addr_book_add_item(ab, name, first_name, line);
             if (result != 0) {
-                // Handle error adding entry to the address book
+                perror("Error adding entry to address book");
                 fclose(file);
                 addr_book_delete(ab);
                 return NULL;
@@ -162,7 +165,6 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
     fclose(file);
     return ab;
 }
-
 
 // Function to create an address book from entries with a specific name
 struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_source, const char* name) {
