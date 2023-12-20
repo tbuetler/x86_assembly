@@ -6,12 +6,14 @@
 #include <string.h>
 #include <limits.h>
 
+// declare functions we will use later
 int compareStrings(const void *a, const void *b);
 void listDirectory(const char *path);
 
 int main(int argc, char *argv[]) {
     const char *path;
 
+	// first check for arguments so we work further with the right args
     // Check if a parameter is provided
     if (argc == 1) {
         // No parameter, list the current directory
@@ -91,6 +93,8 @@ void listDirectory(const char *path) {
         char fullpath[PATH_MAX];
 
         // Check for path length
+        // snprinf was suggested by the internet. It is secure print. It prevents buffer overflow and
+        // I can set the maximum number of chars that can be written to the buffer
         if (snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entries[i]) >= PATH_MAX) {
             fprintf(stderr, "Path length exceeds maximum limit\n");
             continue;
@@ -104,6 +108,7 @@ void listDirectory(const char *path) {
         }
 
         // Print entry name
+        // however somehow the order is important, or maybe use cases?
         printf("%s", entries[i]);
 
         // Append / for directories
@@ -118,12 +123,10 @@ void listDirectory(const char *path) {
         else if (info.st_mode & S_IXUSR) {
             printf("*");
         }
-
         printf("\n");
 
         // Free dynamically allocated memory
         free(entries[i]);
     }
-
     free(entries);
 }
