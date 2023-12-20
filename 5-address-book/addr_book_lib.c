@@ -87,8 +87,7 @@ void addr_book_delete(struct addr_book* ab) {
 }
 
 // Function to add an entry to the address book
-int addr_book_add_item(struct addr_book* ab, const char* name,
-                       const char* first_name, const char* date) {
+int addr_book_add_item(struct addr_book* ab, const char* name, const char* first_name, const char* date) {
     if (ab->size == ab->max_size) {
         // Double the size of the array if it's full
         ab->max_size *= 2;
@@ -105,8 +104,8 @@ int addr_book_add_item(struct addr_book* ab, const char* name,
     struct addr_book_item* entry = &ab->array[ab->size];
 
     //snprintf was suggested by the forums. It is secure print. It has a fixed length.
-    snprintf(entry->name, ADDR_BOOK_NAME_MAX_LEN, "%s", name);
-    snprintf(entry->first_name, ADDR_BOOK_FIRST_NAME_MAX_LEN, "%s", first_name);
+    snprintf(entry->name, ADDR_BOOK_NAME_MAX_LEN + 1, "%s", name);
+    snprintf(entry->first_name, ADDR_BOOK_FIRST_NAME_MAX_LEN + 1, "%s", first_name);
 
     entry->birth_date.day = (uint8_t)day;
     entry->birth_date.month = (uint8_t)month;
@@ -217,7 +216,7 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
         if (sscanf(line, "%[^;];%[^;];%d;%d;%d", name, first_name, &year, &month, &day) == 5) {
             // Add the entry to the address book
             // printf("Adding entry: %s %s %02d.%02d.%02d\n", name, first_name, day, month, year);
-            printf("%s;%s;%d;%d;%d\n", name, first_name, year, month, day);
+            // printf("%s;%s;%d;%d;%d\n", name, first_name, year, month, day);
             int result = addr_book_add_item(ab, name, first_name, line);
             if (result != 0) {
                 perror("Error adding entry to address book");
