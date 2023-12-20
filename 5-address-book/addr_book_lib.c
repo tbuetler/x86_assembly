@@ -87,6 +87,10 @@ void addr_book_delete(struct addr_book* ab) {
 int addr_book_add_item(struct addr_book* ab, const char* name, const char* first_name, const char* date) {
     int day, month, year;
 
+	if (NULL == ab->array) {
+		free(ab);
+	}
+
     if (ab->size == ab->max_size) {
         // Double the size of the array if it's full
         ab->max_size *= 2;
@@ -196,10 +200,23 @@ int addr_book_remove_element_with_name(struct addr_book* ab, const char* name) {
     return removed ? 0 : 1; // Success if at least one element is removed
 }
 
+// Function to parse a date with flexible formats
+int parse_date(const char* date_str, int* year, int* month, int* day) {
+    // Attempt to extract year, month, and day separately
+    int result = sscanf(date_str, "%d.%d.%d", day, month, year);
+    if (result != 3) {
+        result = sscanf(date_str, "%d;%d;%d", year, month, day);
+        if (result != 3) {
+            // Add more formats as needed
+            return 1; // Parsing failed
+        }
+    }
+
+    return 0; // Parsing successful
+}
+
 // Function to create an address book from a file
 struct addr_book* addr_book_create_from_file(const char* filename) {
-    int day, month, year;
-
     FILE* file = fopen(filename, "r");
 
     if (file == NULL) {
@@ -218,17 +235,22 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
     while (fgets(line, sizeof(line), file) != NULL) {
         char name[ADDR_BOOK_NAME_MAX_LEN];
         char first_name[ADDR_BOOK_FIRST_NAME_MAX_LEN];
+        int year, month, day;
 
-        if (sscanf(line, "%[^;];%[^;];%d;%d;%d", name, first_name, &year, &month, &day) == 5) {
-            // Add the entry to the address book
-            // printf("Adding entry: %s %s %02d.%02d.%02d\n", name, first_name, day, month, year);
-            // printf("%s;%s;%d;%d;%d\n", name, first_name, year, month, day);
-            int result = addr_book_add_item(ab, name, first_name, line);
-            if (result != 0) {
-                perror("Error adding entry to address book");
-                fclose(file);
-                addr_book_delete(ab);
-                return NULL;
+        if (sscanf(line, "%[^;];%[^;];%s", name, first_name, line) == 3) {
+            // Try to parse the date with flexible formats
+            if (parse_date(line, &year, &month, &day) == 0) {
+                // Add the entry to the address book
+                int result = addr_book_add_item(ab, name, first_name, line);
+                if (result != 0) {
+                    perror("Error adding entry to address book");
+                    fclose(file);
+                    addr_book_delete(ab);
+                    return NULL;
+                }
+            } else {
+                // Handle date parsing error
+                fprintf(stderr, "Error parsing date in line: %s", line);
             }
         } else {
             // Handle line parsing error
@@ -249,23 +271,18 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
 }
 
 // Function to create an address book from entries with a specific name
-struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_source, const char* name) {
+struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab, const char* name) {
     struct addr_book* selected_ab = addr_book_create_empty();
-    if (selected_ab == NULL) {
-        return NULL; // Memory allocation error
-    }
 
-    for (size_t i = 0; i < ab_source->size; i++) {
-        if (strcmp(ab_source->array[i].name, name) == 0) {
-            // Copy the entry from the source address book
-            const struct addr_book_item* source_entry = &ab_source->array[i];
-            int result = addr_book_add_item(selected_ab, source_entry->name, source_entry->first_name, "2000;1;1");
-            if (result != 0) {
-                perror("Error adding entry to selected address book");
-                addr_book_delete(selected_ab);
-                return NULL;
-            }
+    for (size_t i = 0; i < ab->size; i++) {
+        if (strcmp(ab->array[i].name, name) == 0) {
+            // Copy the entire entry, including the date
+            addr_book_add_item(selected_ab, ab->array[i].name, ab->array[i].first_name, "");
+
+            // Copy the birth date from the original address book
+            selected_ab->array[selected_ab->size - 1].birth_date = ab->array[i].birth_date;
         }
     }
+
     return selected_ab;
 }
