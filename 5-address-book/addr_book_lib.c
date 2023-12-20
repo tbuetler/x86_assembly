@@ -1,9 +1,69 @@
+/*
+Author:	Tim Bütler
+Date:	20.12.2023
+
+Functionality Overview:
+	The address book management system is designed to handle the creation, deletion,
+	and manipulation of entries in a digital address book.
+
+1. addr_book_create_empty:
+   Purpose:	Allocates memory for an empty address book.
+   Usage: 	Initialize a new address book.
+
+2. addr_book_delete:
+   Purpose: Deallocates memory used by an address book.
+   Usage: 	Clean up and free resources when done with the address book.
+
+3. addr_book_add_item:
+   Purpose: Adds a new entry to the address book, dynamically resizing if necessary.
+   Usage: 	Populate the address book with contact information.
+
+4. addr_book_size:
+   Purpose: Returns the number of entries in the address book.
+   Usage: 	Obtain the current size of the address book.
+
+5. addr_book_get_element_at:
+   Purpose: Returns a pointer to the entry at the specified index.
+   Usage: 	Access and manipulate specific entries in the address book.
+
+6. addr_book_remove_element_at:
+   Purpose: Removes an entry at the specified index, shifting remaining entries.
+   Usage: 	Delete a specific entry from the address book.
+
+7. addr_book_print:
+   Purpose: Prints the contents of the address book to a specified stream (e.g., stdout, file).
+   Usage: 	Display the address book's entries for user or debugging purposes.
+
+8. addr_book_save:
+   Purpose: Saves the address book entries to a CSV file.
+   Usage: 	Persistently store address book data for future use.
+
+9. addr_book_remove_element_with_name:
+   Purpose: Removes all entries with a specified name from the address book.
+   Usage:	 Delete multiple entries based on a common name.
+
+10.addr_book_create_from_file:
+   Purpose: Reads entries from a CSV file, creating an address book.
+   Usage: 	Populate the address book from a file, facilitating data import.
+
+11.addr_book_create_from_select_name:
+   Purpose: Creates a new address book with entries that match a specific name.
+   Usage: 	Generate a subset of the address book containing entries with a given name.
+
+Disclaimer:
+	For additional researches the internet has been used: Websites like stackoverflow and reddit - just in case :)
+
+*/
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include "addr_book_lib.h"
+
+// variables for later purpose
+int day, month, year;
 
 // Function to create an empty address book
 struct addr_book* addr_book_create_empty(void) {
@@ -38,16 +98,16 @@ int addr_book_add_item(struct addr_book* ab, const char* name,
         }
     }
 
-    // Parse the date in the "dd.mm.yyyy" format
-    int year, month, day;
-    if (sscanf(date, "%d;%d;%d", &day, &month, &year) == 3) {
-        sscanf(date, "%d.%d.%d", &day, &month, &year);
-    }
+	// scan the input, and yes I don't care if the input could be anything else :)
+	sscanf(date, "%02d.%02d.%04d", &day, &month, &year);
 
     // Add the entry to the address book
+    //snprintf was suggested by the forums. It is secure print. It has a fixed length.
     struct addr_book_item* entry = &ab->array[ab->size];
+
     snprintf(entry->name, ADDR_BOOK_NAME_MAX_LEN, "%s", name);
     snprintf(entry->first_name, ADDR_BOOK_FIRST_NAME_MAX_LEN, "%s", first_name);
+
     entry->birth_date.day = (uint8_t)day;
     entry->birth_date.month = (uint8_t)month;
     entry->birth_date.year = (uint32_t)year;
@@ -147,11 +207,10 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
     while (fgets(line, sizeof(line), file) != NULL) {
         char name[ADDR_BOOK_NAME_MAX_LEN];
         char first_name[ADDR_BOOK_FIRST_NAME_MAX_LEN];
-        int day, month, year;
 
-        if (sscanf(line, "%[^;];%[^;];%d;%d;%d", name, first_name, &day, &month, &year) == 5) {
+        if (sscanf(line, "%[^;];%[^;];%d;%d;%d", name, first_name, &year, &month, &day) == 5) {
             // Add the entry to the address book
-            printf("Adding entry: %s %s %02d;%02d;%02d\n", name, first_name, day, month, year);
+            printf("Adding entry: %s %s %02d.%02d.%02d\n", name, first_name, day, month, year);
             int result = addr_book_add_item(ab, name, first_name, line);
             if (result != 0) {
                 perror("Error adding entry to address book");
@@ -186,7 +245,14 @@ struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_s
 
     for (size_t i = 0; i < ab_source->size; i++) {
         if (strcmp(ab_source->array[i].name, name) == 0) {
-            addr_book_add_item(selected_ab, ab_source->array[i].name, ab_source->array[i].first_name, "01;01;1970");
+            // Copy the entry from the source address book
+            const struct addr_book_item* source_entry = &ab_source->array[i];
+            int result = addr_book_add_item(selected_ab, source_entry->name, source_entry->first_name, "01.01.1970");
+            if (result != 0) {
+                perror("Error adding entry to selected address book");
+                addr_book_delete(selected_ab);
+                return NULL;
+            }
         }
     }
     return selected_ab;
