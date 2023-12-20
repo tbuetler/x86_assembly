@@ -62,9 +62,6 @@ Disclaimer:
 #include <assert.h>
 #include "addr_book_lib.h"
 
-// variables for later purpose
-int day, month, year;
-
 // Function to create an empty address book
 struct addr_book* addr_book_create_empty(void) {
     struct addr_book* ab = malloc(sizeof(struct addr_book));
@@ -88,6 +85,8 @@ void addr_book_delete(struct addr_book* ab) {
 
 // Function to add an entry to the address book
 int addr_book_add_item(struct addr_book* ab, const char* name, const char* first_name, const char* date) {
+    int day, month, year;
+
     if (ab->size == ab->max_size) {
         // Double the size of the array if it's full
         ab->max_size *= 2;
@@ -97,8 +96,12 @@ int addr_book_add_item(struct addr_book* ab, const char* name, const char* first
         }
     }
 
-	// scan the input, and yes I don't care if the input could be anything else :)
-	sscanf(date, "%02d.%02d.%04d", &day, &month, &year);
+   // Use sscanf to dynamically determine the date format
+    if (sscanf(date, "%d.%d.%d", &day, &month, &year) == 3) {
+        // Date format: day.month.year
+    } else if (sscanf(date, "%d;%d;%d", &year, &month, &day) == 3) {
+        // Date format: year;month;day
+    }
 
     // Add the entry to the address book
     struct addr_book_item* entry = &ab->array[ab->size];
@@ -107,9 +110,9 @@ int addr_book_add_item(struct addr_book* ab, const char* name, const char* first
     snprintf(entry->name, ADDR_BOOK_NAME_MAX_LEN + 1, "%s", name);
     snprintf(entry->first_name, ADDR_BOOK_FIRST_NAME_MAX_LEN + 1, "%s", first_name);
 
-    entry->birth_date.day = (uint8_t)day;
-    entry->birth_date.month = (uint8_t)month;
-    entry->birth_date.year = (uint32_t)year;
+    entry->birth_date.day = day;
+    entry->birth_date.month = month;
+    entry->birth_date.year = year;
 
     ab->size++;
     return 0; // Success
@@ -195,7 +198,10 @@ int addr_book_remove_element_with_name(struct addr_book* ab, const char* name) {
 
 // Function to create an address book from a file
 struct addr_book* addr_book_create_from_file(const char* filename) {
+    int day, month, year;
+
     FILE* file = fopen(filename, "r");
+
     if (file == NULL) {
         perror("Error opening file");
         return NULL; // File opening error
