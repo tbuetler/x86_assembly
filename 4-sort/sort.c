@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// is a preprocessor macro
+// easier to read the code instead of the number 100
 #define MAX_LINES 100
 
 // Function to compare strings for ascending order
@@ -40,6 +42,5 @@ int main(int argc, char *argv[]) {
         printf("%s\n", lines[j]);
         free(lines[j]);  // Free dynamically allocated memory
     }
-
     return 0;
 }
