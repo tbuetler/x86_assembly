@@ -102,9 +102,9 @@ int addr_book_add_item(struct addr_book* ab, const char* name,
 	sscanf(date, "%02d.%02d.%04d", &day, &month, &year);
 
     // Add the entry to the address book
-    //snprintf was suggested by the forums. It is secure print. It has a fixed length.
     struct addr_book_item* entry = &ab->array[ab->size];
 
+    //snprintf was suggested by the forums. It is secure print. It has a fixed length.
     snprintf(entry->name, ADDR_BOOK_NAME_MAX_LEN, "%s", name);
     snprintf(entry->first_name, ADDR_BOOK_FIRST_NAME_MAX_LEN, "%s", first_name);
 
@@ -146,10 +146,13 @@ int addr_book_remove_element_at(struct addr_book* ab, size_t index) {
 // Function to print the address book to a stream
 void addr_book_print(FILE* stream, const struct addr_book* ab) {
     for (size_t i = 0; i < ab->size; i++) {
-        fprintf(stream, "Name: %s, First Name: %s, Birth Date: %02d.%02d.%04d\n",
-                ab->array[i].name, ab->array[i].first_name,
-                ab->array[i].birth_date.day, ab->array[i].birth_date.month,
-                ab->array[i].birth_date.year);
+        // fprintf(stream, "Name: %s, First Name: %s, Birth Date: %02d.%02d.%04d\n",
+		fprintf(stream, "%s;%s;%04d;%02d;%02d\n",
+			ab->array[i].name,
+			ab->array[i].first_name,
+			ab->array[i].birth_date.year,
+			ab->array[i].birth_date.month,
+			ab->array[i].birth_date.day);
     }
 }
 
@@ -161,10 +164,13 @@ int addr_book_save(const char* filename, const struct addr_book* ab) {
     }
 
     for (size_t i = 0; i < ab->size; i++) {
-        fprintf(file, "Name: %s, First Name: %s, Birth Date: %02d.%02d.%04d\n",
-                ab->array[i].name, ab->array[i].first_name,
-                ab->array[i].birth_date.day, ab->array[i].birth_date.month,
-                ab->array[i].birth_date.year);
+        // fprintf(file, "Name: %s, First Name: %s, Birth Date: %02d.%02d.%04d\n",
+        fprintf(file, "%s;%s;%04d;%02d;%02d\n",
+                ab->array[i].name,
+                ab->array[i].first_name,
+                ab->array[i].birth_date.year,
+                ab->array[i].birth_date.month,
+                ab->array[i].birth_date.day);
     }
     fclose(file);
     return 0; // Success
@@ -210,7 +216,8 @@ struct addr_book* addr_book_create_from_file(const char* filename) {
 
         if (sscanf(line, "%[^;];%[^;];%d;%d;%d", name, first_name, &year, &month, &day) == 5) {
             // Add the entry to the address book
-            printf("Adding entry: %s %s %02d.%02d.%02d\n", name, first_name, day, month, year);
+            // printf("Adding entry: %s %s %02d.%02d.%02d\n", name, first_name, day, month, year);
+            printf("%s;%s;%04d;%02d;%02d\n", name, first_name, year, month, day);
             int result = addr_book_add_item(ab, name, first_name, line);
             if (result != 0) {
                 perror("Error adding entry to address book");
@@ -247,7 +254,7 @@ struct addr_book* addr_book_create_from_select_name(const struct addr_book* ab_s
         if (strcmp(ab_source->array[i].name, name) == 0) {
             // Copy the entry from the source address book
             const struct addr_book_item* source_entry = &ab_source->array[i];
-            int result = addr_book_add_item(selected_ab, source_entry->name, source_entry->first_name, "01.01.1970");
+            int result = addr_book_add_item(selected_ab, source_entry->name, source_entry->first_name, "2000;01;01");
             if (result != 0) {
                 perror("Error adding entry to selected address book");
                 addr_book_delete(selected_ab);
